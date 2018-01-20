@@ -1,3 +1,11 @@
+/* 
+ * Proyecto realizado por Dmitry Mineev, estudiante de Primer Curso en Telematica, Grupo de Tardes.
+ * Consiste en diseñar un juego parecido con la mecanica a Angry Birds.
+ * Fue realizado en un periodo bastante corto de tiempo por la mala gestión de tiempo libre y por lo tanto
+ * carece de animaciones, sonido y efectos especiales, tanto como el menu. Ademas, el trabajo estaba planteado para
+ * un grupo de estudiantes, pero hubo una ruptura imprevista de este.
+ * 
+ * */
 package com.pbirds.game;
 
 import com.badlogic.gdx.Game;
@@ -18,7 +26,6 @@ import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
-import com.badlogic.gdx.physics.box2d.joints.MouseJointDef;
 
 public class MainGame extends Game implements InputProcessor {
 	
@@ -31,8 +38,7 @@ public class MainGame extends Game implements InputProcessor {
 	Vector2 gravedad;
 	Vector2 throwVector;
 	Vector2 initialPosBee;
-	
-	MouseJointDef jointDef;
+	Vector2 moveToMouse;
 	
 	final float PTM = 75f;
 	
@@ -46,13 +52,7 @@ public class MainGame extends Game implements InputProcessor {
 		// La camara es necesaria, en la documentacion de libgdx hay cosas interesantes
 		cam = new OrthographicCamera(1080, 720);
 		cam.setToOrtho(false, 1080*1.7f, 720*1.7f);
-		
-		jointDef = new MouseJointDef();
-		jointDef.bodyA = floorBody;
-		jointDef.collideConnected = true;
-		jointDef.maxForce = 500;
-		
-		
+				
 		// Creamos a la abeja
 		beeTexture = new Texture("pchela.png");
 		beeSprite = new Sprite(beeTexture);
@@ -67,7 +67,7 @@ public class MainGame extends Game implements InputProcessor {
 		
 		
 		winnieSprite.setSize(128, 128);
-		winnieSprite.setPosition(800, 115);
+		winnieSprite.setPosition(1350, 25f);
 		
 		tirachinasTexture = new Texture("tirachinas.png");
 		bgTexture = new Texture("background.jpg");
@@ -91,7 +91,7 @@ public class MainGame extends Game implements InputProcessor {
 		// Recordamos la posicion inicial de la abeja para luego calcular la fuerza de tension del tirachinas
 		initialPosBee = new Vector2(beeBodyDef.position);
 		
-		winnieBodyDef.position.set((winnieSprite.getX() + winnieSprite.getWidth()) / PTM, (winnieSprite.getY() + winnieSprite.getHeight()) / PTM);
+		winnieBodyDef.position.set((winnieSprite.getX()) / PTM, (winnieSprite.getY()) / PTM);
 		floorBodyDef.position.set(0, 0.3f);
 
 		// Creamos los cuerpos partiendo de las definiciones de cuerpo
@@ -159,8 +159,21 @@ public class MainGame extends Game implements InputProcessor {
 		winnieBody.setLinearVelocity(winnieBody.getLinearVelocity().x*0.99f, winnieBody.getLinearVelocity().y);
 		beeBody.setLinearVelocity(beeBody.getLinearVelocity().x*0.99f, beeBody.getLinearVelocity().y);
 		
+		// Arrastre de la abeja con el raton
+		Vector3 mousePos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+		// Leemos la coordenadas del cursor en el sistema de coordenadas de pantalla
+		cam.unproject(mousePos);
+		Vector2 mousePos2d = new Vector2(mousePos.x, mousePos.y);
+		// Si el mouse1 esta presionado en este momento y la zona del click es permitida, movemos a la abeja a la posicion del cursor
+		if (Gdx.input.isTouched(0) && (mousePos2d.x <= 150) && (mousePos2d.y <= 150)) {
+			// La division por PTM se realiza para determinar la posicion verdadera del cursor
+			beeBody.setTransform(mousePos2d.x/PTM, mousePos2d.y/PTM, 0);
+		}
+		
+		
 		// Acabamos de dibujar
 		batch.end();
+		// Metodo requerido por libgdx, para determinar la "velocidad con la corre el tiempo" en el mundo
 		world.step(1/60f, 6, 2);
 	}
 	
@@ -180,11 +193,7 @@ public class MainGame extends Game implements InputProcessor {
 	
 	@Override
 	public boolean keyUp(int keycode) {
-		if(keycode == Input.Keys.SPACE) {
-			world.setGravity(gravedad);
-			beeBody.applyLinearImpulse(23.0f, 20.0f, beeBody.getPosition().x, beeBody.getPosition().y, true);
-			
-		}
+		// Pulsando F la posocion de la abeja se resetea a la posicion inicial
 		if(keycode == Input.Keys.F) {
 			beeBody.setLinearVelocity(0, 0);
 			beeBody.setAngularVelocity(0);
@@ -207,22 +216,24 @@ public class MainGame extends Game implements InputProcessor {
 
 	@Override
 	public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-		
+		world.setGravity(gravedad);
+		// Unprojecting las coordenadas del cursor
 		Vector3 mousePos = new Vector3(screenX, screenY, 0);
 		cam.unproject(mousePos);
-		throwVector = new Vector2(-(mousePos.x - beeBody.getPosition().x*PTM)*15, -(mousePos.y - beeBody.getPosition().y*PTM)*15);
+		// El vector del tiro se basa en la position actual del raton y la posicion inicial de la abeja
+		throwVector = new Vector2(-(mousePos.x - 150)*17, -(mousePos.y - 150)*17);
+		// Hacemos que solo se pueda tirar la abeja solo hacia derecha y hacia arriba
 		if (throwVector.x < 0 || throwVector.y < 0) return true;
-		Gdx.app.log("Mouse: ", mousePos.x + ", " + mousePos.y);
-		Gdx.app.log("Body: ", beeBody.getPosition().x + ", " + beeBody.getPosition().y);
-//		Vector2 zeroVector = new Vector2(0, 0);
+		// Debugeando posiciones
+//		Gdx.app.log("Mouse: ", mousePos.x + ", " + mousePos.y);
+//		Gdx.app.log("Body: ", beeBody.getPosition().x + ", " + beeBody.getPosition().y);
+		// En cuanto se suelta la abeja, le aplicamos el impulso basado en el vector que hemos calculado antes
 		beeBody.applyForceToCenter(throwVector, true);
-		beeBody.setAngularVelocity(0);
 		return true;
 	}
 
 	@Override
 	public boolean touchDragged(int screenX, int screenY, int pointer) {
-		
 		return true;
 	}
 
