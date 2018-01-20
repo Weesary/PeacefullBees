@@ -17,11 +17,13 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
@@ -29,29 +31,35 @@ import com.badlogic.gdx.physics.box2d.World;
 
 public class MainGame extends Game implements InputProcessor {
 	
-	Texture beeTexture, winnieTexture, tirachinasTexture, bgTexture;
-	Sprite beeSprite, winnieSprite;
-	SpriteBatch batch;
-	World world;
-	OrthographicCamera cam;
-	Body beeBody, winnieBody, floorBody;
-	Vector2 gravedad;
-	Vector2 throwVector;
-	Vector2 initialPosBee;
-	Vector2 moveToMouse;
-	
-	final float PTM = 75f;
+	private Texture beeTexture, winnieTexture, tirachinasTexture, bgTexture;
+	private Sprite beeSprite, winnieSprite;
+	private SpriteBatch batch;
+	private World world;
+	private OrthographicCamera cam;
+	private Body beeBody, winnieBody, floorBody;
+	private Vector2 gravedad;
+	private Vector2 throwVector;
+	private Vector2 initialPosBee;
+	private final float PTM = 75f;
+	private Box2DDebugRenderer debugRend;
+	private Matrix4 debugMatrix;
 	
 	@Override
 	public void create () {
+		// La camara es necesaria, en la documentacion de libgdx hay cosas interesantes
+		cam = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		cam.setToOrtho(false, Gdx.graphics.getWidth()*1.5f, Gdx.graphics.getHeight()*1.5f);
+				
+		// DebugRenderer
+		debugRend = new Box2DDebugRenderer();
+		debugMatrix = cam.combined.cpy().scale(PTM, PTM, 0);
+		
 		// Establecemos la gravedad
 		gravedad = new Vector2(0, -9.8f);
 		
 		// Creamos un batch para dibujar en la pantalla
 		batch = new SpriteBatch();
-		// La camara es necesaria, en la documentacion de libgdx hay cosas interesantes
-		cam = new OrthographicCamera(1080, 720);
-		cam.setToOrtho(false, 1080*1.7f, 720*1.7f);
+		
 				
 		// Creamos a la abeja
 		beeTexture = new Texture("pchela.png");
@@ -170,6 +178,8 @@ public class MainGame extends Game implements InputProcessor {
 			beeBody.setTransform(mousePos2d.x/PTM, mousePos2d.y/PTM, 0);
 		}
 		
+		// Debug Renderer
+		debugRend.render(world, debugMatrix);
 		
 		// Acabamos de dibujar
 		batch.end();
@@ -195,9 +205,9 @@ public class MainGame extends Game implements InputProcessor {
 	public boolean keyUp(int keycode) {
 		// Pulsando F la posocion de la abeja se resetea a la posicion inicial
 		if(keycode == Input.Keys.F) {
+			beeBody.setTransform(initialPosBee, 0);
 			beeBody.setLinearVelocity(0, 0);
 			beeBody.setAngularVelocity(0);
-			beeBody.setTransform(initialPosBee, 0);
 		}
 		return true;
 	}
@@ -221,12 +231,9 @@ public class MainGame extends Game implements InputProcessor {
 		Vector3 mousePos = new Vector3(screenX, screenY, 0);
 		cam.unproject(mousePos);
 		// El vector del tiro se basa en la position actual del raton y la posicion inicial de la abeja
-		throwVector = new Vector2(-(mousePos.x - 150)*17, -(mousePos.y - 150)*17);
+		throwVector = new Vector2(-(mousePos.x - 150)*13, -(mousePos.y - 150)*13);
 		// Hacemos que solo se pueda tirar la abeja solo hacia derecha y hacia arriba
 		if (throwVector.x < 0 || throwVector.y < 0) return true;
-		// Debugeando posiciones
-//		Gdx.app.log("Mouse: ", mousePos.x + ", " + mousePos.y);
-//		Gdx.app.log("Body: ", beeBody.getPosition().x + ", " + beeBody.getPosition().y);
 		// En cuanto se suelta la abeja, le aplicamos el impulso basado en el vector que hemos calculado antes
 		beeBody.applyForceToCenter(throwVector, true);
 		return true;
