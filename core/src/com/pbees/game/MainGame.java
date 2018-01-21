@@ -6,7 +6,7 @@
  * un grupo de estudiantes, pero hubo una ruptura imprevista de este.
  * 
  * */
-package com.pbirds.game;
+package com.pbees.game;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
